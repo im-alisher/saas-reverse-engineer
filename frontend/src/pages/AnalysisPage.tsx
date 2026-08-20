@@ -1,5 +1,5 @@
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTheme } from '../hooks/useTheme'
 import { useCreateAnalysis, useAnalysis } from '../hooks/useAnalysis'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
@@ -22,12 +22,14 @@ export function AnalysisPage() {
   const navigate = useNavigate()
   const url = searchParams.get('url')
   const createMutation = useCreateAnalysis()
+  const hasStarted = useRef(false)
 
   useEffect(() => {
-    if (url && !createMutation.data) {
+    if (url && !hasStarted.current && !createMutation.data) {
+      hasStarted.current = true
       createMutation.mutate(url)
     }
-  }, [url, createMutation])
+  }, [url])
 
   const analysisId = createMutation.data?.id
   const { data: analysis, error: pollError } = useAnalysis(analysisId || null)
