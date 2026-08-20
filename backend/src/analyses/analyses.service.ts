@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { FetchService } from '../fetch/fetch.service'
+import { AiService } from '../ai/ai.service'
 import { CreateAnalysisDto } from './dto/create-analysis.dto'
 import { AnalysisStatus } from '@prisma/client'
 
@@ -11,6 +12,7 @@ export class AnalysesService {
   constructor(
     private prisma: PrismaService,
     private fetchService: FetchService,
+    private aiService: AiService,
   ) {}
 
   async create(dto: CreateAnalysisDto) {
@@ -43,10 +45,47 @@ export class AnalysesService {
     try {
       const content = await this.fetchService.fetchContent(url)
 
+      const analysisPrompt = `Analyze this SaaS product based on the following web content:
+
+URL: ${url}
+Title: ${content.title}
+Description: ${content.description}
+Content: ${content.content.substring(0, 5000)}
+
+Provide a comprehensive analysis including:
+1. Product name and overview
+2. Core features (list top 5-8 features)
+3. Target audience
+4. Revenue model estimation
+5. Suggested tech architecture
+
+Return your response as JSON with this structure:
+{
+  "title": "Product Name",
+  "productSummary": { "name": "...", "overview": "...", "category": "...", "tagline": "..." },
+  "coreFeatures": { "features": [{ "name": "...", "description": "...", "priority": "high|medium|low" }] },
+  "targetAudience": "...",
+  "revenueModel": { "model": "...", "description": "...", "estimatedPrice": "..." },
+  "frontendArchitecture": { "framework": "...", "description": "...", "keyComponents": ["..."] },
+  "backendArchitecture": { "framework": "...", "description": "...", "keyComponents": ["..."] }
+}`
+
+      const result = await this.aiService.generateStructuredResponse<Record<string, any>>(
+        'You are a SaaS product analyst. Analyze the provided web content and return structured JSON.',
+        analysisPrompt,
+      )
+
       await this.prisma.analysis.update({
         where: { id },
         data: {
-          title: content.title,
+          title: result.title || content.title,
+          productSummary: result.productSummary || null,
+          businessDescription: result.productSummary?.overview || content.description,
+          targetAudience: result.targetAudience || null,
+          coreFeatures: result.coreFeatures || null,
+          revenueModel: result.revenueModel || null,
+          frontendArchitecture: result.frontendArchitecture || null,
+          backendArchitecture: result.backendArchitecture || null,
           status: AnalysisStatus.COMPLETED,
         },
       })
