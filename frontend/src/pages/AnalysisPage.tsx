@@ -27,7 +27,7 @@ export function AnalysisPage() {
     if (url && !createMutation.data) {
       createMutation.mutate(url)
     }
-  }, [url])
+  }, [url, createMutation])
 
   const analysisId = createMutation.data?.id
   const { data: analysis, error: pollError } = useAnalysis(analysisId || null)

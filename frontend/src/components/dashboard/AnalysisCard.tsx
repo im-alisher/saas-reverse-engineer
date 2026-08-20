@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ExternalLink, Clock } from 'lucide-react'
 import { Badge } from '../ui/Badge'
@@ -7,26 +8,28 @@ interface AnalysisCardProps {
   analysis: Analysis
 }
 
+function formatTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
 export function AnalysisCard({ analysis }: AnalysisCardProps) {
-  const statusVariant = () => {
+  const statusVariant = useMemo(() => {
     switch (analysis.status) {
       case 'COMPLETED': return 'success' as const
       case 'PROCESSING': return 'info' as const
       case 'FAILED': return 'error' as const
       default: return 'default' as const
     }
-  }
+  }, [analysis.status])
 
-  const timeAgo = () => {
-    const diff = Date.now() - new Date(analysis.createdAt).getTime()
-    const mins = Math.floor(diff / 60000)
-    if (mins < 1) return 'Just now'
-    if (mins < 60) return `${mins}m ago`
-    const hours = Math.floor(mins / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
-  }
+  const timeAgo = useMemo(() => formatTimeAgo(analysis.createdAt), [analysis.createdAt])
 
   return (
     <Link
@@ -38,7 +41,7 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
           <h3 className="font-semibold text-text-primary group-hover:text-primary transition-colors truncate flex-1 mr-2">
             {analysis.title || analysis.url}
           </h3>
-          <Badge variant={statusVariant()}>{analysis.status}</Badge>
+          <Badge variant={statusVariant}>{analysis.status}</Badge>
         </div>
         <p className="text-sm text-text-secondary truncate mb-3 flex items-center gap-1">
           <ExternalLink className="w-3 h-3 shrink-0" />
@@ -46,7 +49,7 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
         </p>
         <div className="flex items-center gap-1 text-xs text-text-secondary">
           <Clock className="w-3 h-3" />
-          {timeAgo()}
+          {timeAgo}
         </div>
       </div>
     </Link>
