@@ -4,6 +4,8 @@ import { FetchService } from '../fetch/fetch.service'
 import { AiService } from '../ai/ai.service'
 import { CreateAnalysisDto } from './dto/create-analysis.dto'
 import { AnalysisStatus } from '@prisma/client'
+import { PRODUCT_SUMMARY_PROMPT } from '../ai/prompts/product-summary.prompt'
+import type { ProductSummarySchema } from '../ai/schemas/product-summary.schema'
 
 @Injectable()
 export class AnalysesService {
@@ -45,47 +47,24 @@ export class AnalysesService {
     try {
       const content = await this.fetchService.fetchContent(url)
 
-      const analysisPrompt = `Analyze this SaaS product based on the following web content:
-
+      const userPrompt = `Analyze this SaaS product:
 URL: ${url}
 Title: ${content.title}
 Description: ${content.description}
-Content: ${content.content.substring(0, 5000)}
+Content: ${content.content.substring(0, 5000)}`
 
-Provide a comprehensive analysis including:
-1. Product name and overview
-2. Core features (list top 5-8 features)
-3. Target audience
-4. Revenue model estimation
-5. Suggested tech architecture
-
-Return your response as JSON with this structure:
-{
-  "title": "Product Name",
-  "productSummary": { "name": "...", "overview": "...", "category": "...", "tagline": "..." },
-  "coreFeatures": { "features": [{ "name": "...", "description": "...", "priority": "high|medium|low" }] },
-  "targetAudience": "...",
-  "revenueModel": { "model": "...", "description": "...", "estimatedPrice": "..." },
-  "frontendArchitecture": { "framework": "...", "description": "...", "keyComponents": ["..."] },
-  "backendArchitecture": { "framework": "...", "description": "...", "keyComponents": ["..."] }
-}`
-
-      const result = await this.aiService.generateStructuredResponse<Record<string, any>>(
-        'You are a SaaS product analyst. Analyze the provided web content and return structured JSON.',
-        analysisPrompt,
+      const result = await this.aiService.generateStructuredResponse<ProductSummarySchema>(
+        PRODUCT_SUMMARY_PROMPT,
+        userPrompt,
       )
 
       await this.prisma.analysis.update({
         where: { id },
         data: {
-          title: result.title || content.title,
+          title: result.productSummary?.name || content.title,
           productSummary: result.productSummary || null,
-          businessDescription: result.productSummary?.overview || content.description,
+          businessDescription: result.businessDescription || content.description,
           targetAudience: result.targetAudience || null,
-          coreFeatures: result.coreFeatures || null,
-          revenueModel: result.revenueModel || null,
-          frontendArchitecture: result.frontendArchitecture || null,
-          backendArchitecture: result.backendArchitecture || null,
           status: AnalysisStatus.COMPLETED,
         },
       })

@@ -5,6 +5,7 @@ import { useCreateAnalysis, useAnalysis } from '../hooks/useAnalysis'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { ProductSummary } from '../components/analysis/ProductSummary'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
 
 export function AnalysisPage() {
@@ -108,12 +109,11 @@ export function AnalysisPage() {
 
         {analysis?.status === 'COMPLETED' ? (
           <div className="grid gap-6">
-            <Card>
-              <h3 className="text-lg font-semibold text-text-primary mb-2">Product Summary</h3>
-              <p className="text-text-secondary">
-                {analysis.title || 'Analysis completed successfully.'}
-              </p>
-            </Card>
+            <ProductSummary
+              data={analysis.productSummary ?? null}
+              businessDescription={analysis.businessDescription}
+              targetAudience={analysis.targetAudience}
+            />
           </div>
         ) : analysis?.status === 'FAILED' ? (
           <Card className="text-center py-12">
