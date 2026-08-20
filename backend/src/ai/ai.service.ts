@@ -10,37 +10,48 @@ export class AiService {
   constructor(private config: ConfigService) {
     this.groq = new Groq({
       apiKey: this.config.get<string>('GROQ_API_KEY'),
+      baseURL: this.config.get<string>('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
     })
+  }
+
+  private extractJson(raw: string): string {
+    const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (codeBlockMatch) return codeBlockMatch[1].trim()
+
+    const firstBrace = raw.indexOf('{')
+    const lastBrace = raw.lastIndexOf('}')
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      return raw.substring(firstBrace, lastBrace + 1)
+    }
+
+    const firstBracket = raw.indexOf('[')
+    const lastBracket = raw.lastIndexOf(']')
+    if (firstBracket >= 0 && lastBracket > firstBracket) {
+      return raw.substring(firstBracket, lastBracket + 1)
+    }
+
+    return raw.trim()
   }
 
   private repairJson(raw: string): string {
     let s = raw.trim()
-
-    const jsonMatch = s.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (jsonMatch) s = jsonMatch[1].trim()
-
-    const firstBrace = s.indexOf('{')
-    const lastBrace = s.lastIndexOf('}')
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      s = s.substring(firstBrace, lastBrace + 1)
-    }
-
     s = s.replace(/,\s*([\]}])/g, '$1')
-    s = s.replace(/'/g, '"')
-
+    s = s.replace(/:\s*"([^"]*)"([^",\]}])/g, ': "$1"$2')
     return s
   }
 
   private parseJsonResponse<T>(content: string): T {
+    const extracted = this.extractJson(content)
+
     try {
-      return JSON.parse(content) as T
+      return JSON.parse(extracted) as T
     } catch {
-      const repaired = this.repairJson(content)
+      const repaired = this.repairJson(extracted)
       this.logger.warn('JSON parse failed, attempting repair')
       try {
         return JSON.parse(repaired) as T
-      } catch {
-        this.logger.warn('JSON repair also failed, returning empty object')
+      } catch (e) {
+        this.logger.warn(`JSON repair failed: ${(e as Error).message}`)
         return {} as T
       }
     }
@@ -50,18 +61,24 @@ export class AiService {
     systemPrompt: string,
     userPrompt: string,
   ): Promise<T> {
+    const fullSystem = `${systemPrompt}
+
+CRITICAL RULES:
+- Return ONLY valid JSON. No markdown, no code blocks, no explanations, no text before or after.
+- Start your response with { and end with }
+- Do not include any conversational text, headers, or formatting.`
+
     const maxRetries = 5
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const response = await this.groq.chat.completions.create({
-          model: 'openai/gpt-oss-120b',
+          model: this.config.get<string>('AI_MODEL', 'openai/gpt-oss-120b'),
           messages: [
-            { role: 'system', content: systemPrompt },
+            { role: 'system', content: fullSystem },
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.3,
           max_tokens: 2048,
-          response_format: { type: 'json_object' },
         })
 
         const content = response.choices[0]?.message?.content
@@ -70,9 +87,9 @@ export class AiService {
         try {
           return this.parseJsonResponse<T>(content)
         } catch (parseErr) {
-          this.logger.warn(`JSON parse failed on attempt ${attempt}, retrying`)
+          this.logger.warn(`JSON parse failed on attempt ${attempt}/${maxRetries}`)
           if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 5000))
+            await new Promise(r => setTimeout(r, 3000))
             continue
           }
           throw parseErr
@@ -85,9 +102,6 @@ export class AiService {
           continue
         }
         this.logger.error('AI generation failed', error)
-        if (error instanceof SyntaxError) {
-          throw new Error('AI returned invalid JSON response')
-        }
         throw error
       }
     }
