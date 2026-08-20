@@ -13,7 +13,8 @@ import { ArchitectureView } from '../components/analysis/ArchitectureView'
 import { DatabaseSchema } from '../components/analysis/DatabaseSchema'
 import { ApiDesign } from '../components/analysis/ApiDesign'
 import { MvpRoadmap } from '../components/analysis/MvpRoadmap'
-import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Loader2, AlertCircle, Download, Copy, FileJson } from 'lucide-react'
+import { exportAsMarkdown, exportAsJson, downloadFile, copyToClipboard } from '../lib/export'
 
 export function AnalysisPage() {
   const { theme, toggleTheme } = useTheme()
@@ -113,6 +114,47 @@ export function AnalysisPage() {
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
+
+        {analysis?.status === 'COMPLETED' && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                const md = exportAsMarkdown(analysis)
+                downloadFile(md, `${analysis.title || 'analysis'}.md`, 'text/markdown')
+              }}
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export Markdown
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                const json = exportAsJson(analysis)
+                downloadFile(json, `${analysis.title || 'analysis'}.json`, 'application/json')
+              }}
+            >
+              <FileJson className="w-3.5 h-3.5" />
+              Export JSON
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                const md = exportAsMarkdown(analysis)
+                copyToClipboard(md)
+              }}
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Copy Results
+            </Button>
+          </div>
+        )}
 
         {analysis?.status === 'COMPLETED' ? (
           <div className="grid gap-6">
