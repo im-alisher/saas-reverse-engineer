@@ -6,8 +6,10 @@ import { CreateAnalysisDto } from './dto/create-analysis.dto'
 import { AnalysisStatus } from '@prisma/client'
 import { PRODUCT_SUMMARY_PROMPT } from '../ai/prompts/product-summary.prompt'
 import { FEATURES_PROMPT } from '../ai/prompts/features.prompt'
+import { COMPETITORS_PROMPT } from '../ai/prompts/competitors.prompt'
 import type { ProductSummarySchema } from '../ai/schemas/product-summary.schema'
 import type { FeaturesSchema } from '../ai/schemas/features.schema'
+import type { CompetitorsSchema } from '../ai/schemas/competitors.schema'
 
 @Injectable()
 export class AnalysesService {
@@ -81,6 +83,21 @@ Content: ${content.content.substring(0, 5000)}`
           coreFeatures: featuresResult.coreFeatures || null,
           userWorkflows: featuresResult.userWorkflows || null,
           valuePropositions: featuresResult.valuePropositions || null,
+        },
+      })
+
+      const competitorsResult = await this.aiService.generateStructuredResponse<CompetitorsSchema>(
+        COMPETITORS_PROMPT,
+        userPrompt,
+      )
+
+      await this.prisma.analysis.update({
+        where: { id },
+        data: {
+          competitors: competitorsResult.competitors || null,
+          marketPositioning: competitorsResult.marketPositioning || null,
+          strengths: competitorsResult.strengths || null,
+          weaknesses: competitorsResult.weaknesses || null,
           status: AnalysisStatus.COMPLETED,
         },
       })

@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ProductSummary } from '../components/analysis/ProductSummary'
 import { CoreFeatures } from '../components/analysis/CoreFeatures'
+import { CompetitorAnalysis } from '../components/analysis/CompetitorAnalysis'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
 
 export function AnalysisPage() {
@@ -119,6 +120,12 @@ export function AnalysisPage() {
               features={analysis.coreFeatures ?? null}
               userWorkflows={analysis.userWorkflows}
               valuePropositions={analysis.valuePropositions}
+            />
+            <CompetitorAnalysis
+              competitors={analysis.competitors ?? null}
+              marketPositioning={analysis.marketPositioning}
+              strengths={analysis.strengths}
+              weaknesses={analysis.weaknesses}
             />
           </div>
         ) : analysis?.status === 'FAILED' ? (
