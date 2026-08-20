@@ -1,17 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name)
-  private readonly groq: Groq
+  private readonly client: OpenAI
+  private readonly model: string
 
   constructor(private config: ConfigService) {
-    this.groq = new Groq({
-      apiKey: this.config.get<string>('GROQ_API_KEY'),
-      baseURL: this.config.get<string>('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
+    this.model = config.get<string>('AI_MODEL', 'gpt-oss-120b')
+    this.client = new OpenAI({
+      apiKey: config.get<string>('GROQ_API_KEY'),
+      baseURL: config.get<string>('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
     })
+    this.logger.log(`AI provider: ${this.client.baseURL} | model: ${this.model}`)
   }
 
   private extractJson(raw: string): string {
@@ -23,26 +26,17 @@ export class AiService {
     if (firstBrace >= 0 && lastBrace > firstBrace) {
       return raw.substring(firstBrace, lastBrace + 1)
     }
-
-    const firstBracket = raw.indexOf('[')
-    const lastBracket = raw.lastIndexOf(']')
-    if (firstBracket >= 0 && lastBracket > firstBracket) {
-      return raw.substring(firstBracket, lastBracket + 1)
-    }
-
     return raw.trim()
   }
 
   private repairJson(raw: string): string {
     let s = raw.trim()
     s = s.replace(/,\s*([\]}])/g, '$1')
-    s = s.replace(/:\s*"([^"]*)"([^",\]}])/g, ': "$1"$2')
     return s
   }
 
   private parseJsonResponse<T>(content: string): T {
     const extracted = this.extractJson(content)
-
     try {
       return JSON.parse(extracted) as T
     } catch {
@@ -71,8 +65,8 @@ CRITICAL RULES:
     const maxRetries = 5
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await this.groq.chat.completions.create({
-          model: this.config.get<string>('AI_MODEL', 'openai/gpt-oss-120b'),
+        const response = await this.client.chat.completions.create({
+          model: this.model,
           messages: [
             { role: 'system', content: fullSystem },
             { role: 'user', content: userPrompt },
@@ -84,16 +78,7 @@ CRITICAL RULES:
         const content = response.choices[0]?.message?.content
         if (!content) throw new Error('No content in AI response')
 
-        try {
-          return this.parseJsonResponse<T>(content)
-        } catch (parseErr) {
-          this.logger.warn(`JSON parse failed on attempt ${attempt}/${maxRetries}`)
-          if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 3000))
-            continue
-          }
-          throw parseErr
-        }
+        return this.parseJsonResponse<T>(content)
       } catch (error: any) {
         if (error?.status === 429 && attempt < maxRetries) {
           const waitMs = 15000 * attempt
