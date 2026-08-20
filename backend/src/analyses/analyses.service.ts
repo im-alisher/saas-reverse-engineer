@@ -7,9 +7,11 @@ import { AnalysisStatus } from '@prisma/client'
 import { PRODUCT_SUMMARY_PROMPT } from '../ai/prompts/product-summary.prompt'
 import { FEATURES_PROMPT } from '../ai/prompts/features.prompt'
 import { COMPETITORS_PROMPT } from '../ai/prompts/competitors.prompt'
+import { REVENUE_MODEL_PROMPT } from '../ai/prompts/revenue-model.prompt'
 import type { ProductSummarySchema } from '../ai/schemas/product-summary.schema'
 import type { FeaturesSchema } from '../ai/schemas/features.schema'
 import type { CompetitorsSchema } from '../ai/schemas/competitors.schema'
+import type { RevenueModelSchema } from '../ai/schemas/revenue-model.schema'
 
 @Injectable()
 export class AnalysesService {
@@ -98,6 +100,20 @@ Content: ${content.content.substring(0, 5000)}`
           marketPositioning: competitorsResult.marketPositioning || null,
           strengths: competitorsResult.strengths || null,
           weaknesses: competitorsResult.weaknesses || null,
+        },
+      })
+
+      const revenueResult = await this.aiService.generateStructuredResponse<RevenueModelSchema>(
+        REVENUE_MODEL_PROMPT,
+        userPrompt,
+      )
+
+      await this.prisma.analysis.update({
+        where: { id },
+        data: {
+          revenueModel: revenueResult.revenueModel || null,
+          pricingAssumptions: revenueResult.pricingAssumptions || null,
+          monetizationOpportunities: revenueResult.monetizationOpportunities || null,
           status: AnalysisStatus.COMPLETED,
         },
       })

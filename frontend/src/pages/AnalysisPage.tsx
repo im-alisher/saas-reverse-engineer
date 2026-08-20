@@ -8,6 +8,7 @@ import { Card } from '../components/ui/Card'
 import { ProductSummary } from '../components/analysis/ProductSummary'
 import { CoreFeatures } from '../components/analysis/CoreFeatures'
 import { CompetitorAnalysis } from '../components/analysis/CompetitorAnalysis'
+import { RevenueModel } from '../components/analysis/RevenueModel'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
 
 export function AnalysisPage() {
@@ -126,6 +127,11 @@ export function AnalysisPage() {
               marketPositioning={analysis.marketPositioning}
               strengths={analysis.strengths}
               weaknesses={analysis.weaknesses}
+            />
+            <RevenueModel
+              revenue={analysis.revenueModel ?? null}
+              pricingAssumptions={analysis.pricingAssumptions ?? null}
+              monetizationOpportunities={analysis.monetizationOpportunities}
             />
           </div>
         ) : analysis?.status === 'FAILED' ? (
