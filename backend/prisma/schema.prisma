@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Analysis {
+  id        String         @id @default(cuid())
+  url       String
+  title     String?
+  status    AnalysisStatus @default(PENDING)
+
+  productSummary          Json?
+  businessDescription     String?
+  targetAudience          String?
+
+  coreFeatures            Json?
+  userWorkflows           Json?
+  valuePropositions       Json?
+
+  competitors             Json?
+  marketPositioning       String?
+  strengths               Json?
+  weaknesses              Json?
+
+  revenueModel            Json?
+  pricingAssumptions      Json?
+  monetizationOpportunities Json?
+
+  frontendArchitecture    Json?
+  backendArchitecture     Json?
+  infrastructureSuggestions Json?
+
+  databaseSchema          Json?
+  prismaSchemaSuggestions Json?
+  databaseEntities        Json?
+
+  restEndpoints           Json?
+  requestDtos             Json?
+  responseDtos            Json?
+
+  developmentPhases       Json?
+  timeline                Json?
+  milestones              Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
