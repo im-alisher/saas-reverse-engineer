@@ -5,7 +5,9 @@ import { AiService } from '../ai/ai.service'
 import { CreateAnalysisDto } from './dto/create-analysis.dto'
 import { AnalysisStatus } from '@prisma/client'
 import { PRODUCT_SUMMARY_PROMPT } from '../ai/prompts/product-summary.prompt'
+import { FEATURES_PROMPT } from '../ai/prompts/features.prompt'
 import type { ProductSummarySchema } from '../ai/schemas/product-summary.schema'
+import type { FeaturesSchema } from '../ai/schemas/features.schema'
 
 @Injectable()
 export class AnalysesService {
@@ -65,6 +67,20 @@ Content: ${content.content.substring(0, 5000)}`
           productSummary: result.productSummary || null,
           businessDescription: result.businessDescription || content.description,
           targetAudience: result.targetAudience || null,
+        },
+      })
+
+      const featuresResult = await this.aiService.generateStructuredResponse<FeaturesSchema>(
+        FEATURES_PROMPT,
+        userPrompt,
+      )
+
+      await this.prisma.analysis.update({
+        where: { id },
+        data: {
+          coreFeatures: featuresResult.coreFeatures || null,
+          userWorkflows: featuresResult.userWorkflows || null,
+          valuePropositions: featuresResult.valuePropositions || null,
           status: AnalysisStatus.COMPLETED,
         },
       })

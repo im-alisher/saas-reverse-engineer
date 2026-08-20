@@ -6,6 +6,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ProductSummary } from '../components/analysis/ProductSummary'
+import { CoreFeatures } from '../components/analysis/CoreFeatures'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
 
 export function AnalysisPage() {
@@ -113,6 +114,11 @@ export function AnalysisPage() {
               data={analysis.productSummary ?? null}
               businessDescription={analysis.businessDescription}
               targetAudience={analysis.targetAudience}
+            />
+            <CoreFeatures
+              features={analysis.coreFeatures ?? null}
+              userWorkflows={analysis.userWorkflows}
+              valuePropositions={analysis.valuePropositions}
             />
           </div>
         ) : analysis?.status === 'FAILED' ? (
