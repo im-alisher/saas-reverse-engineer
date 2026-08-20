@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core'
-import { ValidationPipe } from '@nestjs/common'
+import { ValidationPipe, Logger } from '@nestjs/common'
 import { AppModule } from './app.module'
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap')
   const app = await NestFactory.create(AppModule)
 
   app.setGlobalPrefix('api/v1')
@@ -20,8 +21,13 @@ async function bootstrap() {
     }),
   )
 
+  app.use((req, _res, next) => {
+    logger.log(`${req.method} ${req.url}`)
+    next()
+  })
+
   const port = process.env.PORT || 3000
   await app.listen(port)
-  console.log(`Application running on port ${port}`)
+  logger.log(`Application running on port ${port}`)
 }
 bootstrap()
