@@ -78,7 +78,15 @@ CRITICAL RULES:
         const content = response.choices[0]?.message?.content
         if (!content) throw new Error('No content in AI response')
 
-        return this.parseJsonResponse<T>(content)
+        const parsed = this.parseJsonResponse<T>(content)
+        if (Object.keys(parsed as object).length === 0) {
+          this.logger.warn(`Empty JSON on attempt ${attempt}/${maxRetries}`)
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 3000))
+            continue
+          }
+        }
+        return parsed
       } catch (error: any) {
         if (error?.status === 429 && attempt < maxRetries) {
           const waitMs = 15000 * attempt
