@@ -15,14 +15,19 @@ export class AiService {
 
   private repairJson(raw: string): string {
     let s = raw.trim()
-    if (!s.startsWith('{')) {
-      const start = s.indexOf('{')
-      if (start >= 0) s = s.substring(start)
+
+    const jsonMatch = s.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (jsonMatch) s = jsonMatch[1].trim()
+
+    const firstBrace = s.indexOf('{')
+    const lastBrace = s.lastIndexOf('}')
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      s = s.substring(firstBrace, lastBrace + 1)
     }
-    if (!s.endsWith('}')) {
-      const end = s.lastIndexOf('}')
-      if (end >= 0) s = s.substring(0, end + 1)
-    }
+
+    s = s.replace(/,\s*([\]}])/g, '$1')
+    s = s.replace(/'/g, '"')
+
     return s
   }
 
@@ -32,7 +37,12 @@ export class AiService {
     } catch {
       const repaired = this.repairJson(content)
       this.logger.warn('JSON parse failed, attempting repair')
-      return JSON.parse(repaired) as T
+      try {
+        return JSON.parse(repaired) as T
+      } catch {
+        this.logger.warn('JSON repair also failed, returning empty object')
+        return {} as T
+      }
     }
   }
 
@@ -44,7 +54,7 @@ export class AiService {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const response = await this.groq.chat.completions.create({
-          model: 'openai/gpt-oss-20b',
+          model: 'openai/gpt-oss-120b',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
