@@ -52,6 +52,10 @@ export class AnalysesService {
     return analysis
   }
 
+  private async delay(ms: number) {
+    return new Promise(r => setTimeout(r, ms))
+  }
+
   private async processAnalysis(id: string, url: string) {
     await this.prisma.analysis.update({
       where: { id },
@@ -87,6 +91,8 @@ Content: ${content.content.substring(0, 5000)}`
         userPrompt,
       )
 
+      await this.delay(15000)
+
       await this.prisma.analysis.update({
         where: { id },
         data: {
@@ -100,6 +106,8 @@ Content: ${content.content.substring(0, 5000)}`
         COMPETITORS_PROMPT,
         userPrompt,
       )
+
+      await this.delay(15000)
 
       await this.prisma.analysis.update({
         where: { id },
@@ -116,6 +124,8 @@ Content: ${content.content.substring(0, 5000)}`
         userPrompt,
       )
 
+      await this.delay(15000)
+
       await this.prisma.analysis.update({
         where: { id },
         data: {
@@ -129,6 +139,8 @@ Content: ${content.content.substring(0, 5000)}`
         ARCHITECTURE_PROMPT,
         userPrompt,
       )
+
+      await this.delay(15000)
 
       await this.prisma.analysis.update({
         where: { id },
@@ -144,6 +156,8 @@ Content: ${content.content.substring(0, 5000)}`
         userPrompt,
       )
 
+      await this.delay(15000)
+
       await this.prisma.analysis.update({
         where: { id },
         data: {
@@ -157,6 +171,8 @@ Content: ${content.content.substring(0, 5000)}`
         API_DESIGN_PROMPT,
         userPrompt,
       )
+
+      await this.delay(15000)
 
       await this.prisma.analysis.update({
         where: { id },
