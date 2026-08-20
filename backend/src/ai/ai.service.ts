@@ -31,7 +31,27 @@ export class AiService {
 
   private repairJson(raw: string): string {
     let s = raw.trim()
+
     s = s.replace(/,\s*([\]}])/g, '$1')
+    s = s.replace(/:\s*"([^"]*)"([^",}\]])/g, ': "$1"$2')
+
+    let openBraces = 0
+    let openBrackets = 0
+    let inString = false
+    let escaped = false
+    for (const ch of s) {
+      if (escaped) { escaped = false; continue }
+      if (ch === '\\') { escaped = true; continue }
+      if (ch === '"') { inString = !inString; continue }
+      if (inString) continue
+      if (ch === '{') openBraces++
+      if (ch === '}') openBraces--
+      if (ch === '[') openBrackets++
+      if (ch === ']') openBrackets--
+    }
+    while (openBrackets > 0) { s += ']'; openBrackets-- }
+    while (openBraces > 0) { s += '}'; openBraces-- }
+
     return s
   }
 
@@ -72,7 +92,7 @@ CRITICAL RULES:
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.3,
-          max_tokens: 2048,
+          max_tokens: 4096,
         })
 
         const content = response.choices[0]?.message?.content
