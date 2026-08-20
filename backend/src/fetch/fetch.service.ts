@@ -14,47 +14,54 @@ export interface FetchedContent {
 export class FetchService {
   private readonly logger = new Logger(FetchService.name)
 
-  async fetchContent(url: string): Promise<FetchedContent> {
-    try {
-      const response = await axios.get(url, {
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; SaaSAnalyzer/1.0)',
-          Accept: 'text/html,application/xhtml+xml',
-        },
-        maxRedirects: 5,
-      })
+  async fetchContent(url: string, retries = 3): Promise<FetchedContent> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await axios.get(url, {
+          timeout: 20000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          maxRedirects: 5,
+        })
 
-      const $ = cheerio.load(response.data)
+        const $ = cheerio.load(response.data)
 
-      $('script, style, noscript, iframe, svg, nav, footer, header').remove()
+        $('script, style, noscript, iframe, svg, nav, footer, header').remove()
 
-      const title = $('title').text().trim() || $('h1').first().text().trim()
-      const description =
-        $('meta[name="description"]').attr('content') ||
-        $('meta[property="og:description"]').attr('content') ||
-        ''
+        const title = $('title').text().trim() || $('h1').first().text().trim()
+        const description =
+          $('meta[name="description"]').attr('content') ||
+          $('meta[property="og:description"]').attr('content') ||
+          ''
 
-      const meta: Record<string, string> = {}
-      $('meta').each((_, el) => {
-        const name = $(el).attr('name') || $(el).attr('property')
-        const content = $(el).attr('content')
-        if (name && content) meta[name] = content
-      })
+        const meta: Record<string, string> = {}
+        $('meta').each((_, el) => {
+          const name = $(el).attr('name') || $(el).attr('property')
+          const content = $(el).attr('content')
+          if (name && content) meta[name] = content
+        })
 
-      const bodyText = $('body').text().replace(/\s+/g, ' ').trim()
-      const content = bodyText.substring(0, 10000)
+        const bodyText = $('body').text().replace(/\s+/g, ' ').trim()
+        const content = bodyText.substring(0, 10000)
 
-      const links: string[] = []
-      $('a[href]').each((_, el) => {
-        const href = $(el).attr('href')
-        if (href && href.startsWith('http')) links.push(href)
-      })
+        const links: string[] = []
+        $('a[href]').each((_, el) => {
+          const href = $(el).attr('href')
+          if (href && href.startsWith('http')) links.push(href)
+        })
 
-      return { title, description, content, links: [...new Set(links)].slice(0, 50), meta }
-    } catch (error) {
-      this.logger.error(`Failed to fetch URL: ${url}`, error)
-      throw new Error(`Unable to fetch content from ${url}. Please check the URL and try again.`)
+        return { title, description, content, links: [...new Set(links)].slice(0, 50), meta }
+      } catch (error) {
+        this.logger.warn(`Attempt ${attempt}/${retries} failed for ${url}: ${(error as Error).message}`)
+        if (attempt === retries) {
+          throw new Error(`Unable to fetch content from ${url}. Please check the URL and try again.`)
+        }
+        await new Promise(r => setTimeout(r, 1000 * attempt))
+      }
     }
+    throw new Error(`Unable to fetch content from ${url}. Please check the URL and try again.`)
   }
 }
