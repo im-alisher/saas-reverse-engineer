@@ -13,6 +13,29 @@ export class AiService {
     })
   }
 
+  private repairJson(raw: string): string {
+    let s = raw.trim()
+    if (!s.startsWith('{')) {
+      const start = s.indexOf('{')
+      if (start >= 0) s = s.substring(start)
+    }
+    if (!s.endsWith('}')) {
+      const end = s.lastIndexOf('}')
+      if (end >= 0) s = s.substring(0, end + 1)
+    }
+    return s
+  }
+
+  private parseJsonResponse<T>(content: string): T {
+    try {
+      return JSON.parse(content) as T
+    } catch {
+      const repaired = this.repairJson(content)
+      this.logger.warn('JSON parse failed, attempting repair')
+      return JSON.parse(repaired) as T
+    }
+  }
+
   async generateStructuredResponse<T>(
     systemPrompt: string,
     userPrompt: string,
@@ -27,14 +50,23 @@ export class AiService {
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.3,
-          max_tokens: 4096,
+          max_tokens: 2048,
           response_format: { type: 'json_object' },
         })
 
         const content = response.choices[0]?.message?.content
         if (!content) throw new Error('No content in AI response')
 
-        return JSON.parse(content) as T
+        try {
+          return this.parseJsonResponse<T>(content)
+        } catch (parseErr) {
+          this.logger.warn(`JSON parse failed on attempt ${attempt}, retrying`)
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 5000))
+            continue
+          }
+          throw parseErr
+        }
       } catch (error: any) {
         if (error?.status === 429 && attempt < maxRetries) {
           const waitMs = 15000 * attempt
