@@ -9,6 +9,10 @@ import { ProductSummary } from '../components/analysis/ProductSummary'
 import { CoreFeatures } from '../components/analysis/CoreFeatures'
 import { CompetitorAnalysis } from '../components/analysis/CompetitorAnalysis'
 import { RevenueModel } from '../components/analysis/RevenueModel'
+import { ArchitectureView } from '../components/analysis/ArchitectureView'
+import { DatabaseSchema } from '../components/analysis/DatabaseSchema'
+import { ApiDesign } from '../components/analysis/ApiDesign'
+import { MvpRoadmap } from '../components/analysis/MvpRoadmap'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
 
 export function AnalysisPage() {
@@ -132,6 +136,26 @@ export function AnalysisPage() {
               revenue={analysis.revenueModel ?? null}
               pricingAssumptions={analysis.pricingAssumptions ?? null}
               monetizationOpportunities={analysis.monetizationOpportunities}
+            />
+            <ArchitectureView
+              frontend={analysis.frontendArchitecture ?? null}
+              backend={analysis.backendArchitecture ?? null}
+              infrastructure={analysis.infrastructureSuggestions}
+            />
+            <DatabaseSchema
+              schema={analysis.databaseSchema ?? null}
+              suggestions={analysis.prismaSchemaSuggestions}
+              entities={analysis.databaseEntities ?? null}
+            />
+            <ApiDesign
+              endpoints={analysis.restEndpoints ?? null}
+              requestDtos={analysis.requestDtos ?? null}
+              responseDtos={analysis.responseDtos ?? null}
+            />
+            <MvpRoadmap
+              phases={analysis.developmentPhases ?? null}
+              timeline={analysis.timeline ?? null}
+              milestones={analysis.milestones ?? null}
             />
           </div>
         ) : analysis?.status === 'FAILED' ? (

@@ -8,10 +8,18 @@ import { PRODUCT_SUMMARY_PROMPT } from '../ai/prompts/product-summary.prompt'
 import { FEATURES_PROMPT } from '../ai/prompts/features.prompt'
 import { COMPETITORS_PROMPT } from '../ai/prompts/competitors.prompt'
 import { REVENUE_MODEL_PROMPT } from '../ai/prompts/revenue-model.prompt'
+import { ARCHITECTURE_PROMPT } from '../ai/prompts/architecture.prompt'
+import { DATABASE_PROMPT } from '../ai/prompts/database.prompt'
+import { API_DESIGN_PROMPT } from '../ai/prompts/api-design.prompt'
+import { MVP_ROADMAP_PROMPT } from '../ai/prompts/mvp-roadmap.prompt'
 import type { ProductSummarySchema } from '../ai/schemas/product-summary.schema'
 import type { FeaturesSchema } from '../ai/schemas/features.schema'
 import type { CompetitorsSchema } from '../ai/schemas/competitors.schema'
 import type { RevenueModelSchema } from '../ai/schemas/revenue-model.schema'
+import type { ArchitectureSchema } from '../ai/schemas/architecture.schema'
+import type { DatabaseSchemaGen } from '../ai/schemas/database.schema'
+import type { ApiDesignSchema } from '../ai/schemas/api-design.schema'
+import type { MvpRoadmapSchema } from '../ai/schemas/mvp-roadmap.schema'
 
 @Injectable()
 export class AnalysesService {
@@ -114,6 +122,62 @@ Content: ${content.content.substring(0, 5000)}`
           revenueModel: revenueResult.revenueModel || null,
           pricingAssumptions: revenueResult.pricingAssumptions || null,
           monetizationOpportunities: revenueResult.monetizationOpportunities || null,
+        },
+      })
+
+      const archResult = await this.aiService.generateStructuredResponse<ArchitectureSchema>(
+        ARCHITECTURE_PROMPT,
+        userPrompt,
+      )
+
+      await this.prisma.analysis.update({
+        where: { id },
+        data: {
+          frontendArchitecture: archResult.frontendArchitecture || null,
+          backendArchitecture: archResult.backendArchitecture || null,
+          infrastructureSuggestions: archResult.infrastructureSuggestions || null,
+        },
+      })
+
+      const dbResult = await this.aiService.generateStructuredResponse<DatabaseSchemaGen>(
+        DATABASE_PROMPT,
+        userPrompt,
+      )
+
+      await this.prisma.analysis.update({
+        where: { id },
+        data: {
+          databaseSchema: dbResult.databaseSchema || null,
+          prismaSchemaSuggestions: dbResult.prismaSchemaSuggestions || null,
+          databaseEntities: dbResult.databaseEntities || null,
+        },
+      })
+
+      const apiResult = await this.aiService.generateStructuredResponse<ApiDesignSchema>(
+        API_DESIGN_PROMPT,
+        userPrompt,
+      )
+
+      await this.prisma.analysis.update({
+        where: { id },
+        data: {
+          restEndpoints: apiResult.restEndpoints || null,
+          requestDtos: apiResult.requestDtos || null,
+          responseDtos: apiResult.responseDtos || null,
+        },
+      })
+
+      const roadmapResult = await this.aiService.generateStructuredResponse<MvpRoadmapSchema>(
+        MVP_ROADMAP_PROMPT,
+        userPrompt,
+      )
+
+      await this.prisma.analysis.update({
+        where: { id },
+        data: {
+          developmentPhases: roadmapResult.developmentPhases || null,
+          timeline: roadmapResult.timeline || null,
+          milestones: roadmapResult.milestones || null,
           status: AnalysisStatus.COMPLETED,
         },
       })
