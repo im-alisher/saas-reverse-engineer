@@ -1,119 +1,111 @@
-# AI SaaS Reverse Engineer
+# SaaS Reverse Engineer
 
-A production-quality platform that analyzes any SaaS URL and generates comprehensive reverse-engineering insights powered by AI.
+SaaS Reverse Engineer analyzes a public SaaS website and produces structured product, market, architecture, database, API, and delivery insights. It is a portfolio-ready React and NestJS application backed by PostgreSQL and an OpenAI-compatible AI provider.
 
-## Features
+## Highlights
 
-- **Product Summary** - Get an overview of any SaaS product
-- **Feature Extraction** - Identify core features, workflows, and value propositions
-- **Competitor Analysis** - Discover competitors and market positioning
-- **Revenue Model** - Analyze pricing models and monetization opportunities
-- **Architecture Recommendations** - Get tech stack suggestions
-- **Database Schema** - Generate Prisma schema recommendations
-- **API Design** - REST endpoint design with DTOs
-- **MVP Roadmap** - Development phases, timelines, and milestones
-- **Export** - Download results as Markdown or JSON
-- **Dark Mode** - Full dark/light theme support
+- Product summary, target audience, features, and workflows
+- Competitor and revenue-model analysis
+- Architecture, Prisma schema, and REST API recommendations
+- MVP roadmap and export to Markdown or JSON
+- Responsive dashboard, loading and empty states, and light/dark themes
 
-## Tech Stack
+## Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | React, TypeScript, Vite, Tailwind CSS, React Query |
-| Backend | NestJS, Prisma, PostgreSQL |
-| AI | Groq (LLaMA 3.1 70B) |
+| --- | --- |
+| Web | React 19, TypeScript, Vite, Tailwind CSS, TanStack Query |
+| API | NestJS, TypeScript, Prisma |
+| Data | PostgreSQL |
+| AI | OpenAI-compatible API (Groq by default) |
 
-## Getting Started
+## Requirements
 
-### Prerequisites
-
-- Node.js 18+
+- Node.js 22+ and npm 10+
 - PostgreSQL 14+
-- Groq API key (from [console.groq.com](https://console.groq.com))
+- An API key for the configured AI provider
 
-### Installation
+## Local setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd saas-reverse-engineer
-   ```
+1. Clone the repository and enter it.
+2. Copy `backend/.env.example` to `backend/.env` and replace every placeholder. Never commit `.env` files.
+3. Install and prepare the API:
 
-2. **Setup Backend**
    ```bash
    cd backend
    npm install
-   cp .env.example .env
-   # Edit .env with your database URL and Groq API key
    npx prisma generate
    npx prisma migrate dev
-   ```
-
-3. **Setup Frontend**
-   ```bash
-   cd ../frontend
-   npm install
-   ```
-
-4. **Start Development Servers**
-   ```bash
-   # Terminal 1 - Backend
-   cd backend
    npm run start:dev
+   ```
 
-   # Terminal 2 - Frontend
+4. In another terminal, install and start the web app:
+
+   ```bash
    cd frontend
+   npm install
    npm run dev
    ```
 
-5. **Open** [http://localhost:5173](http://localhost:5173)
+5. Open <http://localhost:5173>.
 
-### Environment Variables
+The Vite development server proxies `/api` to `http://localhost:3000`. Set `VITE_API_URL` only when the API is hosted elsewhere.
 
-**Backend** (`backend/.env`):
-```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/saas_reverse_engineer"
-GROQ_API_KEY="your-groq-api-key"
-CORS_ORIGIN="http://localhost:5173"
-PORT=3000
+## Environment variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection string used by Prisma |
+| `GROQ_API_KEY` | Yes | API credential for the AI provider |
+| `GROQ_BASE_URL` | No | OpenAI-compatible endpoint; defaults to Groq |
+| `AI_MODEL` | No | Provider model identifier |
+| `CORS_ORIGIN` | No | Allowed web origin; defaults to local Vite |
+| `PORT` | No | API port; defaults to `3000` |
+| `VITE_API_URL` | No | Browser-visible API origin for non-proxied builds |
+
+## Docker Compose
+
+Copy the root example and supply strong local credentials before starting:
+
+```bash
+cp .env.example .env
+docker compose up --build
 ```
 
-**Frontend** (`frontend/.env`):
-```
-VITE_API_URL=http://localhost:3000
+The web app is available at <http://localhost:5173> and the API at <http://localhost:3000/api/v1>.
+
+## Verification
+
+Run the following in both `backend` and `frontend`:
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
-## API Endpoints
+Backend integration tests require the `DATABASE_URL` database to be reachable.
+
+## API
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/analyses` | Create a new analysis |
-| GET | `/api/v1/analyses` | List all analyses |
-| GET | `/api/v1/analyses/:id` | Get analysis by ID |
-| DELETE | `/api/v1/analyses/:id` | Delete an analysis |
+| --- | --- | --- |
+| `POST` | `/api/v1/analyses` | Start an analysis |
+| `GET` | `/api/v1/analyses` | List analyses |
+| `GET` | `/api/v1/analyses/:id` | Read an analysis |
+| `DELETE` | `/api/v1/analyses/:id` | Delete an analysis |
 
-## Project Structure
+Only public HTTP(S) targets are accepted. Local/private network addresses and URLs containing embedded credentials are rejected.
 
-```
-saas-reverse-engineer/
-├── frontend/          # React + Vite + Tailwind
-│   ├── src/
-│   │   ├── components/   # UI components
-│   │   ├── hooks/        # React hooks
-│   │   ├── pages/        # Page components
-│   │   └── lib/          # Utilities
-│   └── ...
-├── backend/           # NestJS + Prisma
-│   ├── src/
-│   │   ├── analyses/     # Analysis module
-│   │   ├── ai/           # Groq AI service
-│   │   ├── fetch/        # URL fetcher
-│   │   └── prisma/       # Database service
-│   └── prisma/
-│       └── schema.prisma
-└── docs/              # Documentation
-```
+## Contributing
+
+Open an issue before substantial changes. Keep pull requests focused, do not add generated build output or environment files, and run the full verification commands above. Never include real credentials in issues, fixtures, documentation, or commits.
+
+## Security
+
+If a credential is exposed, revoke it with its provider and replace it immediately; deleting it from the latest revision does not remove it from history. Report vulnerabilities privately to the repository owner rather than opening a public issue.
 
 ## License
 
-MIT
+[MIT](LICENSE)

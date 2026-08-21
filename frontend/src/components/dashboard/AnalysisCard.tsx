@@ -33,7 +33,7 @@ export function AnalysisCard({ analysis }: AnalysisCardProps) {
 
   return (
     <Link
-      to={`/analyze?url=${encodeURIComponent(analysis.url)}`}
+      to={`/analyze?id=${encodeURIComponent(analysis.id)}`}
       className="block group"
     >
       <div className="p-5 rounded-xl bg-surface border border-border hover:border-primary/20 hover:shadow-lg transition-all duration-200">

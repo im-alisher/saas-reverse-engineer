@@ -21,20 +21,22 @@ export function AnalysisPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const url = searchParams.get('url')
+  const existingId = searchParams.get('id')
   const createMutation = useCreateAnalysis()
+  const { mutate: createAnalysis } = createMutation
   const hasStarted = useRef(false)
 
   useEffect(() => {
-    if (url && !hasStarted.current && !createMutation.data) {
+    if (url && !existingId && !hasStarted.current) {
       hasStarted.current = true
-      createMutation.mutate(url)
+      createAnalysis(url)
     }
-  }, [url])
+  }, [url, existingId, createAnalysis])
 
-  const analysisId = createMutation.data?.id
+  const analysisId = existingId || createMutation.data?.id
   const { data: analysis, error: pollError } = useAnalysis(analysisId || null)
 
-  if (!url) {
+  if (!url && !existingId) {
     return (
       <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -64,7 +66,7 @@ export function AnalysisPage() {
           <Card className="text-center py-16">
             <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
             <h2 className="text-xl font-semibold text-text-primary mb-2">
-              Analyzing {url}
+              Analyzing {url || 'saved analysis'}
             </h2>
             <p className="text-text-secondary">
               This may take a few moments while we analyze the product...
@@ -107,12 +109,12 @@ export function AnalysisPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-text-primary mb-2">Analysis Results</h1>
           <a
-            href={url}
+            href={analysis?.url || url || '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-primary hover:text-primary-hover transition-colors"
           >
-            {url}
+            {analysis?.url || url}
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
