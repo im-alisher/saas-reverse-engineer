@@ -11,7 +11,7 @@ export class AiService {
   constructor(private config: ConfigService) {
     this.model = config.get<string>('AI_MODEL', 'gpt-oss-120b')
     this.client = new OpenAI({
-      apiKey: config.get<string>('GROQ_API_KEY'),
+      apiKey: config.getOrThrow<string>('GROQ_API_KEY'),
       baseURL: config.get<string>('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
     })
     this.logger.log(`AI provider: ${this.client.baseURL} | model: ${this.model}`)
@@ -107,8 +107,9 @@ CRITICAL RULES:
           }
         }
         return parsed
-      } catch (error: any) {
-        if (error?.status === 429 && attempt < maxRetries) {
+      } catch (error: unknown) {
+        const status = this.getErrorStatus(error)
+        if (status === 429 && attempt < maxRetries) {
           const waitMs = 15000 * attempt
           this.logger.warn(`Rate limited, waiting ${waitMs / 1000}s before retry ${attempt}/${maxRetries}`)
           await new Promise(r => setTimeout(r, waitMs))
@@ -119,5 +120,10 @@ CRITICAL RULES:
       }
     }
     throw new Error('AI generation failed after max retries')
+  }
+
+  private getErrorStatus(error: unknown): number | undefined {
+    if (typeof error !== 'object' || error === null || !('status' in error)) return undefined
+    return typeof error.status === 'number' ? error.status : undefined
   }
 }

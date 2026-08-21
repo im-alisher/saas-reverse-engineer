@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { INestApplication, ValidationPipe } from '@nestjs/common'
 import * as request from 'supertest'
 import { AppModule } from '../src/app.module'
+import { PrismaService } from '../src/prisma/prisma.service'
 
 describe('Analyses (e2e)', () => {
   let app: INestApplication
@@ -9,7 +10,18 @@ describe('Analyses (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile()
+    })
+      .overrideProvider(PrismaService)
+      .useValue({
+        analysis: {
+          findMany: jest.fn().mockResolvedValue([]),
+          count: jest.fn().mockResolvedValue(0),
+          findUnique: jest.fn().mockResolvedValue(null),
+          delete: jest.fn(),
+          create: jest.fn(),
+        },
+      })
+      .compile()
 
     app = moduleFixture.createNestApplication()
     app.setGlobalPrefix('api/v1')
