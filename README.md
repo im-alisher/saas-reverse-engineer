@@ -1,6 +1,6 @@
 # SaaS Reverse Engineer
 
-SaaS Reverse Engineer analyzes a public SaaS website and produces structured product, market, architecture, database, API, and delivery insights. It is a portfolio-ready React and NestJS application backed by PostgreSQL and an OpenAI-compatible AI provider.
+SaaS Reverse Engineer analyzes a public SaaS website and produces structured product, market, architecture, database, API, and delivery insights. It is a full-stack React and NestJS application backed by PostgreSQL and an OpenAI-compatible AI provider.
 
 ## Highlights
 
