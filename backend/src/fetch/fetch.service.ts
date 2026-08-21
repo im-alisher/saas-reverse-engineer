@@ -18,7 +18,7 @@ export class FetchService {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         const response = await axios.get(url, {
-          timeout: 20000,
+          timeout: 45000,
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -59,7 +59,7 @@ export class FetchService {
         if (attempt === retries) {
           throw new Error(`Unable to fetch content from ${url}. Please check the URL and try again.`)
         }
-        await new Promise(r => setTimeout(r, 1000 * attempt))
+        await new Promise(r => setTimeout(r, 2000 * attempt))
       }
     }
     throw new Error(`Unable to fetch content from ${url}. Please check the URL and try again.`)

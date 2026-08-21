@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { FetchService } from '../fetch/fetch.service'
 import { AiService } from '../ai/ai.service'
 import { CreateAnalysisDto } from './dto/create-analysis.dto'
-import { AnalysisStatus } from '@prisma/client'
+import { AnalysisStatus, Prisma } from '@prisma/client'
 import { PRODUCT_SUMMARY_PROMPT } from '../ai/prompts/product-summary.prompt'
 import { FEATURES_PROMPT } from '../ai/prompts/features.prompt'
 import { COMPETITORS_PROMPT } from '../ai/prompts/competitors.prompt'
@@ -56,11 +56,30 @@ export class AnalysesService {
     return new Promise(r => setTimeout(r, ms))
   }
 
+  private async updateWithRetry(id: string, data: Prisma.AnalysisUpdateInput, attempts = 3) {
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return await this.prisma.analysis.update({ where: { id }, data })
+      } catch (error) {
+        if (attempt === attempts) throw error
+        this.logger.warn(`DB update failed for ${id} (attempt ${attempt}/${attempts}), retrying: ${(error as Error).message}`)
+        await this.delay(3000 * attempt)
+      }
+    }
+  }
+
+  private async runStep<T>(
+    id: string,
+    systemPrompt: string,
+    userPrompt: string,
+    map: (result: T) => Prisma.AnalysisUpdateInput,
+  ) {
+    const result = await this.aiService.generateStructuredResponse<T>(systemPrompt, userPrompt)
+    await this.updateWithRetry(id, map(result))
+  }
+
   private async processAnalysis(id: string, url: string) {
-    await this.prisma.analysis.update({
-      where: { id },
-      data: { status: AnalysisStatus.PROCESSING },
-    })
+    await this.updateWithRetry(id, { status: AnalysisStatus.PROCESSING })
 
     try {
       const content = await this.fetchService.fetchContent(url)
@@ -71,138 +90,107 @@ Title: ${content.title}
 Description: ${content.description}
 Content: ${content.content.substring(0, 5000)}`
 
-      const result = await this.aiService.generateStructuredResponse<ProductSummarySchema>(
-        PRODUCT_SUMMARY_PROMPT,
-        userPrompt,
-      )
+      const steps: Promise<void>[] = [
+        this.runStep<ProductSummarySchema>(
+          id,
+          PRODUCT_SUMMARY_PROMPT,
+          userPrompt,
+          r => ({
+            title: r.productSummary?.name || content.title,
+            productSummary: r.productSummary || null,
+            businessDescription: r.businessDescription || content.description,
+            targetAudience: r.targetAudience || null,
+          }),
+        ),
+        this.runStep<FeaturesSchema>(
+          id,
+          FEATURES_PROMPT,
+          userPrompt,
+          r => ({
+            coreFeatures: r.coreFeatures || null,
+            userWorkflows: r.userWorkflows || null,
+            valuePropositions: r.valuePropositions || null,
+          }),
+        ),
+        this.runStep<CompetitorsSchema>(
+          id,
+          COMPETITORS_PROMPT,
+          userPrompt,
+          r => ({
+            competitors: r.competitors || null,
+            marketPositioning: r.marketPositioning || null,
+            strengths: r.strengths || null,
+            weaknesses: r.weaknesses || null,
+          }),
+        ),
+        this.runStep<RevenueModelSchema>(
+          id,
+          REVENUE_MODEL_PROMPT,
+          userPrompt,
+          r => ({
+            revenueModel: r.revenueModel || null,
+            pricingAssumptions: r.pricingAssumptions || null,
+            monetizationOpportunities: r.monetizationOpportunities || null,
+          }),
+        ),
+        this.runStep<ArchitectureSchema>(
+          id,
+          ARCHITECTURE_PROMPT,
+          userPrompt,
+          r => ({
+            frontendArchitecture: r.frontendArchitecture || null,
+            backendArchitecture: r.backendArchitecture || null,
+            infrastructureSuggestions: r.infrastructureSuggestions || null,
+          }),
+        ),
+        this.runStep<DatabaseSchemaGen>(
+          id,
+          DATABASE_PROMPT,
+          userPrompt,
+          r => ({
+            databaseSchema: r.databaseSchema || null,
+            prismaSchemaSuggestions: r.prismaSchemaSuggestions || null,
+            databaseEntities: r.databaseEntities || null,
+          }),
+        ),
+        this.runStep<ApiDesignSchema>(
+          id,
+          API_DESIGN_PROMPT,
+          userPrompt,
+          r => ({
+            restEndpoints: r.restEndpoints || null,
+            requestDtos: r.requestDtos || null,
+            responseDtos: r.responseDtos || null,
+          }),
+        ),
+        this.runStep<MvpRoadmapSchema>(
+          id,
+          MVP_ROADMAP_PROMPT,
+          userPrompt,
+          r => ({
+            developmentPhases: r.developmentPhases || null,
+            timeline: r.timeline || null,
+            milestones: r.milestones || null,
+          }),
+        ),
+      ]
 
-      await this.prisma.analysis.update({
-        where: { id },
-        data: {
-          title: result.productSummary?.name || content.title,
-          productSummary: result.productSummary || null,
-          businessDescription: result.businessDescription || content.description,
-          targetAudience: result.targetAudience || null,
-        },
-      })
+      const results = await Promise.allSettled(steps)
+      const failed = results.filter(r => r.status === 'rejected')
+      failed.forEach(r => this.logger.error(`Analysis ${id}: step failed`, (r as PromiseRejectedResult).reason))
 
-      const featuresResult = await this.aiService.generateStructuredResponse<FeaturesSchema>(
-        FEATURES_PROMPT,
-        userPrompt,
-      )
+      if (failed.length === steps.length) {
+        throw new Error('All analysis steps failed')
+      }
 
-      await this.delay(15000)
-
-      await this.prisma.analysis.update({
-        where: { id },
-        data: {
-          coreFeatures: featuresResult.coreFeatures || null,
-          userWorkflows: featuresResult.userWorkflows || null,
-          valuePropositions: featuresResult.valuePropositions || null,
-        },
-      })
-
-      const competitorsResult = await this.aiService.generateStructuredResponse<CompetitorsSchema>(
-        COMPETITORS_PROMPT,
-        userPrompt,
-      )
-
-      await this.delay(15000)
-
-      await this.prisma.analysis.update({
-        where: { id },
-        data: {
-          competitors: competitorsResult.competitors || null,
-          marketPositioning: competitorsResult.marketPositioning || null,
-          strengths: competitorsResult.strengths || null,
-          weaknesses: competitorsResult.weaknesses || null,
-        },
-      })
-
-      const revenueResult = await this.aiService.generateStructuredResponse<RevenueModelSchema>(
-        REVENUE_MODEL_PROMPT,
-        userPrompt,
-      )
-
-      await this.delay(15000)
-
-      await this.prisma.analysis.update({
-        where: { id },
-        data: {
-          revenueModel: revenueResult.revenueModel || null,
-          pricingAssumptions: revenueResult.pricingAssumptions || null,
-          monetizationOpportunities: revenueResult.monetizationOpportunities || null,
-        },
-      })
-
-      const archResult = await this.aiService.generateStructuredResponse<ArchitectureSchema>(
-        ARCHITECTURE_PROMPT,
-        userPrompt,
-      )
-
-      await this.delay(15000)
-
-      await this.prisma.analysis.update({
-        where: { id },
-        data: {
-          frontendArchitecture: archResult.frontendArchitecture || null,
-          backendArchitecture: archResult.backendArchitecture || null,
-          infrastructureSuggestions: archResult.infrastructureSuggestions || null,
-        },
-      })
-
-      const dbResult = await this.aiService.generateStructuredResponse<DatabaseSchemaGen>(
-        DATABASE_PROMPT,
-        userPrompt,
-      )
-
-      await this.delay(15000)
-
-      await this.prisma.analysis.update({
-        where: { id },
-        data: {
-          databaseSchema: dbResult.databaseSchema || null,
-          prismaSchemaSuggestions: dbResult.prismaSchemaSuggestions || null,
-          databaseEntities: dbResult.databaseEntities || null,
-        },
-      })
-
-      const apiResult = await this.aiService.generateStructuredResponse<ApiDesignSchema>(
-        API_DESIGN_PROMPT,
-        userPrompt,
-      )
-
-      await this.delay(15000)
-
-      await this.prisma.analysis.update({
-        where: { id },
-        data: {
-          restEndpoints: apiResult.restEndpoints || null,
-          requestDtos: apiResult.requestDtos || null,
-          responseDtos: apiResult.responseDtos || null,
-        },
-      })
-
-      const roadmapResult = await this.aiService.generateStructuredResponse<MvpRoadmapSchema>(
-        MVP_ROADMAP_PROMPT,
-        userPrompt,
-      )
-
-      await this.prisma.analysis.update({
-        where: { id },
-        data: {
-          developmentPhases: roadmapResult.developmentPhases || null,
-          timeline: roadmapResult.timeline || null,
-          milestones: roadmapResult.milestones || null,
-          status: AnalysisStatus.COMPLETED,
-        },
-      })
+      await this.updateWithRetry(id, { status: AnalysisStatus.COMPLETED })
     } catch (error) {
       this.logger.error(`Processing failed for ${id}`, error)
-      await this.prisma.analysis.update({
-        where: { id },
-        data: { status: AnalysisStatus.FAILED },
-      })
+      try {
+        await this.updateWithRetry(id, { status: AnalysisStatus.FAILED })
+      } catch (updateError) {
+        this.logger.error(`Failed to mark analysis ${id} as FAILED`, updateError)
+      }
     }
   }
 
